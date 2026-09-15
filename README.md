@@ -65,7 +65,7 @@ docker compose -f compose.yaml -f compose.prod.yaml up -d --build
 Node.js 24.17.0以上24.x未満を使用する場合は、以下で確認できます。
 
 ```bash
-npm install
+npm ci
 npm run verify
 ```
 
