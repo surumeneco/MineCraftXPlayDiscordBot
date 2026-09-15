@@ -29,3 +29,11 @@ jobs:
 
       - name: Build container
         run: docker build -t minecraft-xplay-discord-bot:ci .
+
+      - name: Upload generated lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-lock
+          path: package-lock.json
+          if-no-files-found: error
+          retention-days: 1
