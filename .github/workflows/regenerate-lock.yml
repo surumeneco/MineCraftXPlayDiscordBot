@@ -1,0 +1,38 @@
+name: Regenerate dependency lock for test merge
+
+on:
+  push:
+    branches: [feature/merge-main-tests]
+    paths:
+      - package.json
+      - tsconfig.test.json
+      - test/**
+      - test-utils/**
+
+permissions:
+  contents: write
+
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.17.0
+      - name: Generate lockfile
+        run: npm install --package-lock-only --ignore-scripts
+      - name: Validate lock and tests
+        run: |
+          npm ci
+          npm run verify
+          docker build -t minecraft-xplay-discord-bot:merge-check .
+      - name: Commit generated lockfile
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'chore: sync lockfile for merged tests'
+            git push
+          fi
