@@ -2,11 +2,13 @@ FROM node:24.17.0-bookworm-slim AS build
 
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+# pict-node is a test-only dependency; its install hook needs Git/native build tools,
+# which are intentionally absent from the production image.
+RUN npm ci --ignore-scripts
 
 COPY tsconfig.json ./
 COPY src ./src
-RUN npm run build && npm prune --omit=dev
+RUN npm run build && npm prune --omit=dev --ignore-scripts
 
 FROM node:24.17.0-bookworm-slim AS runtime
 
