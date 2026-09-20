@@ -67,8 +67,12 @@ export function isAuthorizedVpsOperator(
 }
 
 export function validateVpsCommand(input: string): string {
+  // Check the original text: trim() would silently erase leading/trailing newlines.
+  if (/[\u0000\r\n]/.test(input)) {
+    throw new Error('Command must be 1–400 characters and contain no newline or NUL.');
+  }
   const command = input.trim();
-  if (!command || command.length > 400 || /[\u0000\r\n]/.test(command)) {
+  if (!command || command.length > 400) {
     throw new Error('Command must be 1–400 characters and contain no newline or NUL.');
   }
   return command;
