@@ -8,3 +8,5 @@ dist
 coverage
 *.log
 README.md
+secrets
+ssh-keys
