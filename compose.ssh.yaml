@@ -1,0 +1,15 @@
+# Opt-in overlay. Do not include this file until the operator has provisioned SSH access.
+# Usage: docker compose -f compose.yaml -f compose.prod.yaml -f compose.ssh.yaml up -d --build
+services:
+  bot:
+    environment:
+      VPS_SSH_ENABLED: "true"
+    secrets:
+      - vps_ssh_key
+      - vps_ssh_known_hosts
+
+secrets:
+  vps_ssh_key:
+    file: ${VPS_SSH_KEY_SOURCE:?Set VPS_SSH_KEY_SOURCE to the dedicated private key path}
+  vps_ssh_known_hosts:
+    file: ${VPS_SSH_KNOWN_HOSTS_SOURCE:?Set VPS_SSH_KNOWN_HOSTS_SOURCE to a verified known_hosts file}
