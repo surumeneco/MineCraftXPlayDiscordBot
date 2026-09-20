@@ -53,15 +53,18 @@ export function sshArguments(config: VpsConfig, command: string): string[] {
 export function executeSshCommand(config: VpsConfig, command: string): Promise<SshResult> {
   const started = Date.now();
   return new Promise((resolve) => {
+    // An argument array avoids invoking a *local* shell. The remote login shell
+    // intentionally interprets the operator-supplied command as a single command string.
     const child = spawn('ssh', sshArguments(config, command), {
       shell: false,
-      stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env, SSH_AUTH_SOCK: '', SSH_ASKPASS: '/bin/false' },
     });
+    child.stdin.end();
     active.add(child);
     let output = Buffer.alloc(0);
     let outcome: SshOutcome = 'exit';
     let settled = false;
+    let timer: NodeJS.Timeout;
     const finish = (exitCode: number | null): void => {
       if (settled) return;
       settled = true;
@@ -88,7 +91,7 @@ export function executeSshCommand(config: VpsConfig, command: string): Promise<S
     child.stderr.on('data', capture);
     child.on('error', () => { outcome = 'connection-error'; finish(null); });
     child.on('close', (code) => finish(code));
-    const timer = setTimeout(() => stop('timeout'), TIMEOUT_MS);
+    timer = setTimeout(() => stop('timeout'), TIMEOUT_MS);
     timer.unref();
   });
 }
