@@ -74,6 +74,49 @@ docker compose -f compose.yaml -f compose.dev.yaml down
 
 同じ Bot Token を使ってローカルと本番を同時に起動すると、同一 Bot アカウントの複数プロセスが動作します。接続確認が終わったら不要な開発コンテナを停止してください。
 
+## WebAppとのお知らせ通知・ローカル連携テスト
+
+**VPSではなくWindows開発PCで実行する手順です。** WebApp側の[連携テスト手順](https://github.com/surumeneco/MineCraftXPlayWebApp/blob/develop/README.md#discordbotとのお知らせ通知ローカル連携テスト)と併用します。通常起動の `compose.yaml` + `compose.dev.yaml` に、通知用 `compose.notice.yaml` を追加します。本番のお知らせチャンネルではなくテスト用Discordチャンネルを使ってください。Discordへの投稿はモックではなく実際に行われます。
+
+1. 両リポジトリの `develop` を更新し、Docker Desktopを起動する。各 `.env` は既存値を保持し、未作成時だけ `.env.example` をコピーする。
+2. Botにテスト用チャンネルの閲覧・メッセージ送信権限を与え、チャンネルIDをコピーする。Node.jsを導入済みなら `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"` で共通シークレットを生成できる。実際のシークレットやBot TokenをGitに登録しない。
+3. 本リポジトリの `.env` に以下を設定する。WebApp側の `NOTICE_NOTIFY_SECRET` にも**同じ値**を設定する。
+
+   ```dotenv
+   DISCORD_BOT_TOKEN=<既存Botトークン>
+   NOTICE_CHANNEL_ID=<テスト用チャンネルID>
+   NOTICE_NOTIFY_SECRET=<WebAppと共通の32バイト以上の秘密値>
+   NOTICE_HTTP_PORT=3101
+   ```
+
+4. 一度だけ共有Dockerネットワークを作る。既存なら作り直さない。
+
+   ```powershell
+   docker network inspect xplay_notices *> $null
+   if ($LASTEXITCODE -ne 0) { docker network create xplay_notices }
+   ```
+
+5. **Botリポジトリのルート**で起動する（WebAppを別のVSCodeターミナルで起動する）。
+
+   ```powershell
+   docker compose -f compose.yaml -f compose.dev.yaml -f compose.notice.yaml up -d --build
+   docker compose -f compose.yaml -f compose.dev.yaml -f compose.notice.yaml ps -a
+   docker compose -f compose.yaml -f compose.dev.yaml -f compose.notice.yaml logs --tail=100 bot
+   ```
+
+   `Discord client ready as ...` と `Notice notification receiver listening on port 3101.` が出ればBot側の準備完了。`xplay-notice-bot:3101` はDocker内部の通信先で、ホストやインターネットへ公開しない。
+
+6. WebApp側を[READMEの手順](https://github.com/surumeneco/MineCraftXPlayWebApp/blob/develop/README.md#discordbotとのお知らせ通知ローカル連携テスト)で起動する。管理者が記事を下書き保存した段階では通知なし、初回公開では新規投稿通知、公開中の記事本文変更では更新通知、タグのみの編集・公開取り消しでは通知なし、再公開では新規投稿通知が再度届くことを確認する。投稿URLはローカル設定なら `localhost:3000` となり、開発PC以外からは開けない。
+
+終了時は**Botリポジトリ**で以下を実行する。WebApp側も別途停止する。`logs -f` の `Ctrl+C` だけではコンテナは停止しない。
+
+```powershell
+docker compose -f compose.yaml -f compose.dev.yaml -f compose.notice.yaml stop
+docker compose -f compose.yaml -f compose.dev.yaml -f compose.notice.yaml ps -a
+```
+
+この停止操作ではBotコンテナは削除されない。WebApp側のDBの保存データも削除しない。WebApp側では `down -v` / `down --volumes` や `docker volume prune` を実行しない。通知の仕様・本番構成は [`NOTICE_NOTIFICATIONS.md`](./NOTICE_NOTIFICATIONS.md) を参照する。
+
 ## テスト
 
 ホストに対応する Node.js / npm がある場合、VSCode ターミナルで以下を実行できます。
