@@ -1,0 +1,14 @@
+# Opt-in overlay: docker compose -f compose.yaml -f compose.notice.yaml up -d --build
+# Create the shared network once: docker network create xplay_notices
+# Do not publish the internal HTTP port to the host or the Internet.
+services:
+  bot:
+    networks:
+      default: {}
+      xplay_notices:
+        aliases:
+          - xplay-notice-bot
+networks:
+  xplay_notices:
+    external: true
+    name: xplay_notices
