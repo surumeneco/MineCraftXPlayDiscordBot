@@ -37,7 +37,7 @@ export interface VariantCase<T extends object> {
   shouldAccept: boolean
 }
 
-export function accept<T>(
+export function accept<const T>(
   name: string,
   value: T,
   options: { baseline?: boolean; category?: string } = {},
@@ -71,9 +71,10 @@ export function defineVariants<T extends object>() {
 }
 
 export function assertVariantMap<T extends object>(variants: VariantMap<T>): void {
-  for (const [field, fieldVariants] of Object.entries(variants)) {
+  for (const field of Object.keys(variants) as Array<keyof T>) {
+    const fieldVariants = variants[field]
     if (fieldVariants.length === 0) {
-      throw new Error(`Variant definition for "${field}" must not be empty.`)
+      throw new Error(`Variant definition for "${String(field)}" must not be empty.`)
     }
 
     const baselines = fieldVariants.filter(
@@ -82,7 +83,7 @@ export function assertVariantMap<T extends object>(variants: VariantMap<T>): voi
 
     if (baselines.length !== 1) {
       throw new Error(
-        `Variant definition for "${field}" must contain exactly one accepted baseline variant.`,
+        `Variant definition for "${String(field)}" must contain exactly one accepted baseline variant.`,
       )
     }
   }

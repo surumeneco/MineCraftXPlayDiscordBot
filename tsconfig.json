@@ -1,18 +1,18 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
+    "target": "ES2023",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "rootDir": "src",
+    "outDir": "dist",
     "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
     "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["node", "vitest/globals"],
-    "baseUrl": ".",
-    "paths": {
-      "@test-utils": ["./test-utils/index.ts"]
-    }
+    "declaration": true,
+    "sourceMap": true
   },
-  "include": ["test-utils/**/*.ts", "test/**/*.ts", "vitest.config.ts"]
+  "include": ["src/**/*.ts"]
 }
