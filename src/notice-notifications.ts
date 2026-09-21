@@ -21,7 +21,7 @@ function authorized(header: string | undefined, secret: string): boolean {
 export function parseNoticeEvent(payload: unknown): NoticeEvent {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('Invalid event');
   const event = payload as Record<string, unknown>;
-  if (typeof event.event_id !== 'string' || !/^[0-9a-f-]{36,65}:(publish|update)$/.test(event.event_id)) throw new Error('Invalid event ID');
+  if (typeof event.event_id !== 'string' || !/^[0-9a-f-]{36}:[1-9]\d*:(publish|update)$/.test(event.event_id)) throw new Error('Invalid event ID');
   if (event.kind !== 'publish' && event.kind !== 'update') throw new Error('Invalid event kind');
   if (!event.event_id.endsWith(`:${event.kind}`)) throw new Error('Event ID does not match kind');
   if (typeof event.title !== 'string' || !event.title.trim()) throw new Error('Invalid title');
