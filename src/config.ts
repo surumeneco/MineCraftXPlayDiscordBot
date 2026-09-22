@@ -49,5 +49,5 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     }
     requests = { channelId: requestChannel, sharedSecret: requestSecret, port };
   }
-  return { discordBotToken, noticeNotifications, requests };
+  return { discordBotToken, ...(noticeNotifications ? { noticeNotifications } : {}), ...(requests ? { requests } : {}) };
 }
