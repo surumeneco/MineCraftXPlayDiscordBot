@@ -11,10 +11,10 @@ const event = {
 } as const;
 
 describe('notice notifications', () => {
-  it('formats publication and update differently with the article URL', () => {
+  it('formats publication and update differently with tags and the article URL', () => {
     const published = parseNoticeEvent({ ...event, tags: [...event.tags] });
-    expect(formatNoticeMessage(published)).toBe(`新しいお知らせが投稿されました！テスト: 建築 イベント\n${event.url}`);
-    expect(formatNoticeMessage({ ...published, kind: 'update' })).toBe(`お知らせ内容が更新されました: テスト\n${event.url}`);
+    expect(formatNoticeMessage(published)).toBe(`新しいお知らせが投稿されました: テスト 🏷️建築 イベント\n${event.url}`);
+    expect(formatNoticeMessage({ ...published, kind: 'update' })).toBe(`お知らせの内容が更新されました: テスト 🏷️建築 イベント\n${event.url}`);
   });
 
   it('rejects invalid event IDs, malformed URLs and tagless publication', () => {
