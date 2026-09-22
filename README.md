@@ -2,13 +2,13 @@
 
 `MineCraftXPlayServer` の周辺連携を担う独自 DiscordBot です。標準の Minecraft ↔ Discord チャット・状態通知などは Minecraft 側の DiscordSRV を優先し、このリポジトリでは独自機能を実装します。
 
-現在の実装は **Discord Gateway へ接続する最小 Bot**（設定検証、接続・終了ログ、正常停止処理）です。Minecraft 操作・VPS 操作・Web アプリ連携・自動検出などの将来機能は、現段階では利用できません。Bot 自身の HTTP API やローカル確認用 Web ページもありません。
+Discord Gateway への接続に加え、WebApp のお知らせ公開通知を Docker 内部の HTTP エンドポイントで受信します。Minecraft 操作・VPS 操作・自動検出などは別途開発対象です。
 
 ## VSCode で開いた直後
 
 本リポジトリのフォルダーを VSCode で開き、**[ターミナル] → [新しいターミナル]** を選びます。ローカルは Windows 11 の PowerShell、VPS は Ubuntu のシェルを想定します。コマンドは特記がなければリポジトリのルートで実行してください。
 
-Bot 本体とテスト基盤を統合した `develop` が作業対象です。先にブランチと変更状況を確認します。
+開発時の作業対象は `develop`、本番デプロイ対象は `main` です。先にブランチと変更状況を確認します。
 
 ```powershell
 git fetch origin --prune
@@ -17,7 +17,7 @@ git pull --ff-only origin develop
 git status --short
 ```
 
-未コミットの変更がある場合は切り替える前に内容を確認します。`main` には以前テスト基盤が別途追加されていましたが、`develop` に統合済みです。
+未コミットの変更がある場合は切り替える前に内容を確認します。
 
 ## 必要環境と Secret
 
@@ -137,49 +137,46 @@ npm run verify
 ssh -i "$HOME/.ssh/鍵ファイル名" SSHユーザー名@アプリVPSのIP
 ```
 
-接続後は Ubuntu 上の操作です。既存の配置先がある場合はそのディレクトリを使います。未配置で新たに構築する場合の配置例は次のとおりです。すでに稼働中の Bot を二重に配置・起動しないでください。
+本番の既存配置先は `/opt/xplay/MineCraftXPlayDiscordBot`、Git 操作ユーザーは `xplay`、デプロイ対象ブランチは `main` とする。初回配置と日常の更新を混同しないこと。`.env` の Bot Token・お知らせ送信先ID・共通シークレットはVPSごとに Git 管理外で保持する。
+
+## 本番再デプロイ（既存のアプリ用VPS）
+
+**DiscordBotのコードまたは環境変数が変更されたときの手順。** ログ確認までアプリ用VPSで実行する。root のシェルから操作する場合、Git だけ `xplay` で実行する。すでに `xplay` でログインしている場合は `runuser -u xplay --` を外す。Docker はホスト上で許可されたユーザーで実行する。
+
+### 1. main を取得
 
 ```bash
-mkdir -p ~/apps
-cd ~/apps
-git clone https://github.com/surumeneco/MineCraftXPlayDiscordBot.git
-cd MineCraftXPlayDiscordBot
-git fetch origin --prune
-git switch develop
-git pull --ff-only origin develop
+cd /opt/xplay/MineCraftXPlayDiscordBot
+runuser -u xplay -- git status --short
+runuser -u xplay -- git fetch origin --prune
+runuser -u xplay -- git switch main
+runuser -u xplay -- git pull --ff-only origin main
+runuser -u xplay -- git rev-parse --short HEAD
 ```
 
-初回のみ、VPS 内で `.env` を作成して本番用 Token を設定します。既存の `.env` を Git 更新やコピーで上書きしません。
+`status --short` に未コミット変更がある場合は内容を確認し、無条件に `reset --hard` しない。新しい環境変数が必要な場合は `.env.example` を参照して `.env` に追記し、既存の Token や Secret を上書きしない。
+
+### 2. 設定検証・再ビルド
 
 ```bash
-[ -f .env ] || cp .env.example .env
-docker compose -f compose.yaml -f compose.prod.yaml up -d --build
-docker compose -f compose.yaml -f compose.prod.yaml ps bot
-docker compose -f compose.yaml -f compose.prod.yaml logs -f bot
+docker compose -f compose.yaml -f compose.prod.yaml -f compose.notice.yaml config --quiet
+docker compose -f compose.yaml -f compose.prod.yaml -f compose.notice.yaml up -d --build
 ```
 
-本番用 override は `restart: unless-stopped` を設定します。Bot には公開待受ポートがなく、稼働確認は主にログと Docker のコンテナ状態で行います。
+通知連携用の `compose.notice.yaml` を必ず含める。共有Dockerネットワーク `xplay_notices` は初回に一度だけ作成する。すでに存在する場合は作り直さない。通知HTTPポート3101はホストに公開しない。
 
-本番の通常操作は次のとおりです。
+### 3. 状態とログ
 
 ```bash
-# 停止
-docker compose -f compose.yaml -f compose.prod.yaml stop bot
-# 再起動（コードや設定が変わっていない場合）
-docker compose -f compose.yaml -f compose.prod.yaml restart bot
-# 状態確認
-docker compose -f compose.yaml -f compose.prod.yaml ps bot
-# ログ確認
-docker compose -f compose.yaml -f compose.prod.yaml logs --tail=100 bot
-# ソース更新・再ビルド・コンテナ再作成
-git pull --ff-only origin develop
-docker compose -f compose.yaml -f compose.prod.yaml up -d --build
+docker compose -f compose.yaml -f compose.prod.yaml -f compose.notice.yaml ps
+docker compose -f compose.yaml -f compose.prod.yaml -f compose.notice.yaml logs --tail=80 bot
 ```
 
-`restart` だけでは新しいコード・image・環境変数は反映されません。変更時は `up -d --build` を使用します。本番更新前に `git status --short` を確認し、Secret や VPS 固有の状態を Git に追加しないでください。
+`Discord client ready as ...` と `Notice notification receiver listening on port 3101.` を確認する。`restart` だけではソース・イメージ・変更後の `.env` が反映されない場合があるため、更新時は `up -d --build` を使う。WebApp も更新する場合は [WebApp README の本番再デプロイ手順](https://github.com/surumeneco/MineCraftXPlayWebApp/blob/main/README.md) を参照する。
 
 ## 仕様・環境資料
 
+- [お知らせ通知仕様](./NOTICE_NOTIFICATIONS.md)
 - [テスト方針と共通ユーティリティ](./TESTING.md)
 - [DiscordBot 設計](https://drive.google.com/file/d/1rpYIHjRzajzdnohlQGl0lkTLVuL0C4Ju/view)
 - [実装制約](https://drive.google.com/file/d/1KvbMEWMfC-HWpg7k_VWqGV6XIZirK2Sd/view)
