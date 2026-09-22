@@ -49,16 +49,17 @@ async function receive(req: IncomingMessage, res: ServerResponse, client: Client
     });
     res.writeHead(204, { 'cache-control': 'no-store' });
     res.end();
-  } catch (error) {
-    logger.error('Request delivery failed.', error);
+  } catch {
+    // Discord errors may contain the outgoing payload; do not log raw error objects.
+    logger.error('Request delivery failed.');
     reply(res, 502, 'Discord delivery failed');
   }
 }
 
 export function startRequestReceiver(client: Client, config: RequestReceiverConfig): Promise<Server> {
   const server = createServer((req, res) => {
-    void receive(req, res, client, config).catch((error: unknown) => {
-      logger.error('Request receiver failed.', error);
+    void receive(req, res, client, config).catch(() => {
+      logger.error('Request receiver failed.');
       if (!res.headersSent) reply(res, 500, 'Internal error');
       else res.end();
     });
