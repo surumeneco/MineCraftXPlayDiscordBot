@@ -37,9 +37,10 @@ export function parseNoticeEvent(payload: unknown): NoticeEvent {
 }
 
 export function formatNoticeMessage(event: NoticeEvent): string {
+  const tags = event.tags.join(' ');
   const heading = event.kind === 'publish'
-    ? `新しいお知らせが投稿されました！${event.title}: ${event.tags.join(' ')}`
-    : `お知らせ内容が更新されました: ${event.title}`;
+    ? `新しいお知らせが投稿されました: ${event.title} 🏷️${tags}`
+    : `お知らせの内容が更新されました: ${event.title} 🏷️${tags}`;
   const space = 2000 - event.url.length - 1;
   if (space < 2) throw new Error('Notice URL exceeds Discord message limit');
   // Title length has no application-level limit. Reserve the link and truncate
