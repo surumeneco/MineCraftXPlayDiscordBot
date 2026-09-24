@@ -1,4 +1,5 @@
 import type { RequestReceiverConfig } from './requests.js';
+import type { TerritoryNotificationConfig } from './territory-notifications.js';
 
 export interface NoticeNotificationConfig {
   readonly channelId: string;
@@ -10,6 +11,7 @@ export interface AppConfig {
   readonly discordBotToken: string;
   readonly noticeNotifications?: NoticeNotificationConfig;
   readonly requests?: RequestReceiverConfig;
+  readonly territoryNotifications?: TerritoryNotificationConfig;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -49,5 +51,28 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     }
     requests = { channelId: requestChannel, sharedSecret: requestSecret, port };
   }
-  return { discordBotToken, ...(noticeNotifications ? { noticeNotifications } : {}), ...(requests ? { requests } : {}) };
+  const territoryParticipant = env.TERRITORY_PARTICIPANT_CHANNEL_ID?.trim();
+  const territoryAdmin = env.TERRITORY_ADMIN_CHANNEL_ID?.trim();
+  const territorySecret = env.TERRITORY_NOTIFY_SECRET?.trim();
+  let territoryNotifications: TerritoryNotificationConfig | undefined;
+  if (territoryParticipant || territoryAdmin || territorySecret) {
+    for (const [name, value] of [['TERRITORY_PARTICIPANT_CHANNEL_ID', territoryParticipant], ['TERRITORY_ADMIN_CHANNEL_ID', territoryAdmin]] as const) {
+      if (!value || !/^\d{15,22}$/.test(value)) throw new Error(`${name} must be a Discord channel ID when territory notifications are enabled.`);
+    }
+    if (!territorySecret || Buffer.byteLength(territorySecret) < 32) {
+      throw new Error('TERRITORY_NOTIFY_SECRET must be at least 32 bytes when territory notifications are enabled.');
+    }
+    const port = Number(env.TERRITORY_HTTP_PORT || '3103');
+    if (!Number.isInteger(port) || port < 1 || port > 65535 || port === noticeNotifications?.port || port === requests?.port) {
+      throw new Error('TERRITORY_HTTP_PORT must be a valid TCP port distinct from other receivers.');
+    }
+    territoryNotifications = {
+      participantChannelId: territoryParticipant!,
+      adminChannelId: territoryAdmin!,
+      sharedSecret: territorySecret,
+      port,
+    };
+  }
+  return { discordBotToken, ...(noticeNotifications ? { noticeNotifications } : {}), ...(requests ? { requests } : {}),
+    ...(territoryNotifications ? { territoryNotifications } : {}) };
 }
