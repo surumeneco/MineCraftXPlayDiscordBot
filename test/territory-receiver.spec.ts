@@ -59,19 +59,19 @@ describe('territory receiver', () => {
       expect(options.body.content).toContain('<@323456789012345678>');
       expect(options.body.content).toContain('@everyone 広場');
     }
-    expect(post.mock.calls[0][1].body.nonce).not.toBe(post.mock.calls[1][1].body.nonce);
+    expect(post.mock.calls[0]![1]!.body.nonce).not.toBe(post.mock.calls[1]![1]!.body.nonce);
   });
 
   it('keeps per-channel nonces stable across a retry after partial delivery failure', async () => {
     const { post, request } = await setup();
     post.mockResolvedValueOnce({ id: 'participant' }).mockRejectedValueOnce(new Error('admin failed'));
     expect((await request()).status).toBe(502);
-    const firstParticipantNonce = post.mock.calls[0][1].body.nonce;
-    const firstAdminNonce = post.mock.calls[1][1].body.nonce;
+    const firstParticipantNonce = post.mock.calls[0]![1]!.body.nonce;
+    const firstAdminNonce = post.mock.calls[1]![1]!.body.nonce;
 
     post.mockResolvedValue({ id: 'retry' });
     expect((await request()).status).toBe(204);
-    expect(post.mock.calls[2][1].body.nonce).toBe(firstParticipantNonce);
-    expect(post.mock.calls[3][1].body.nonce).toBe(firstAdminNonce);
+    expect(post.mock.calls[2]![1]!.body.nonce).toBe(firstParticipantNonce);
+    expect(post.mock.calls[3]![1]!.body.nonce).toBe(firstAdminNonce);
   });
 });
