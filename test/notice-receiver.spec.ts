@@ -41,7 +41,7 @@ describe('notice receiver', () => {
     expect((await request(event)).status).toBe(204);
     expect(post).toHaveBeenCalledWith('/channels/123456789012345678/messages', {
       body: {
-        content: `新しいお知らせが投稿されました！@everyone 重要: 案内\n${event.url}`,
+        content: `新しいお知らせが投稿されました: @everyone 重要 🏷️案内\n${event.url}`,
         allowed_mentions: { parse: [] }, nonce: eventNonce(event.event_id), enforce_nonce: true,
       },
     });
