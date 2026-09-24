@@ -59,6 +59,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     for (const [name, value] of [['TERRITORY_PARTICIPANT_CHANNEL_ID', territoryParticipant], ['TERRITORY_ADMIN_CHANNEL_ID', territoryAdmin]] as const) {
       if (!value || !/^\d{15,22}$/.test(value)) throw new Error(`${name} must be a Discord channel ID when territory notifications are enabled.`);
     }
+    if (territoryParticipant === territoryAdmin) {
+      throw new Error('Territory participant and administrator channel IDs must be different.');
+    }
     if (!territorySecret || Buffer.byteLength(territorySecret) < 32) {
       throw new Error('TERRITORY_NOTIFY_SECRET must be at least 32 bytes when territory notifications are enabled.');
     }
