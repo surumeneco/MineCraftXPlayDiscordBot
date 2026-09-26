@@ -15,6 +15,7 @@ export interface TerritoryEvent {
   kind: 'application' | 'approved' | 'returned' | 'rejected' | 'withdrawn' | 'renamed';
   application_type: 'new' | 'edit';
   territory_name: string;
+  previous_name?: string;
   account_name: string;
   discord_ids: string[];
   centroid?: { x: number; z: number };
@@ -36,6 +37,7 @@ export function parseTerritoryEvent(payload: unknown): TerritoryEvent {
   if (!['application','approved','returned','rejected','withdrawn','renamed'].includes(String(event.kind))) throw new Error('Invalid event kind');
   if (!['new','edit'].includes(String(event.application_type))) throw new Error('Invalid application type');
   if (typeof event.territory_name !== 'string' || !event.territory_name.trim()) throw new Error('Invalid territory name');
+  if (event.kind === 'renamed' && (typeof event.previous_name !== 'string' || !event.previous_name.trim() || event.previous_name.length > 100)) throw new Error('Invalid previous territory name');
   if (typeof event.account_name !== 'string' || !event.account_name.trim()) throw new Error('Invalid account name');
   if (!Array.isArray(event.discord_ids) || !event.discord_ids.every(id => typeof id === 'string' && /^\d{15,22}$/.test(id))) {
     throw new Error('Invalid Discord IDs');
@@ -67,6 +69,7 @@ function mentions(ids: string[]): string {
 }
 
 export function formatTerritoryMessage(event: TerritoryEvent): string {
+  if (event.kind === 'renamed') return `${event.previous_name}が${event.territory_name}に改名されました！`;
   const subject = event.application_type === 'edit' ? `領地｢${event.territory_name}｣の変更` : `領地｢${event.territory_name}｣`;
   if (event.kind === 'application') {
     const first = event.application_type === 'edit'
