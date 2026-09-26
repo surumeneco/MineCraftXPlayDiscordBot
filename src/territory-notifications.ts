@@ -12,7 +12,7 @@ export interface TerritoryNotificationConfig {
 
 export interface TerritoryEvent {
   event_id: string;
-  kind: 'application' | 'approved' | 'returned' | 'rejected' | 'withdrawn';
+  kind: 'application' | 'approved' | 'returned' | 'rejected' | 'withdrawn' | 'renamed';
   application_type: 'new' | 'edit';
   territory_name: string;
   account_name: string;
@@ -33,7 +33,7 @@ export function parseTerritoryEvent(payload: unknown): TerritoryEvent {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('Invalid event');
   const event = payload as Record<string, unknown>;
   if (typeof event.event_id !== 'string' || event.event_id.length > 200) throw new Error('Invalid event ID');
-  if (!['application','approved','returned','rejected','withdrawn'].includes(String(event.kind))) throw new Error('Invalid event kind');
+  if (!['application','approved','returned','rejected','withdrawn','renamed'].includes(String(event.kind))) throw new Error('Invalid event kind');
   if (!['new','edit'].includes(String(event.application_type))) throw new Error('Invalid application type');
   if (typeof event.territory_name !== 'string' || !event.territory_name.trim()) throw new Error('Invalid territory name');
   if (typeof event.account_name !== 'string' || !event.account_name.trim()) throw new Error('Invalid account name');
