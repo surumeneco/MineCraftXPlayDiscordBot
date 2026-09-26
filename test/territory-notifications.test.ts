@@ -26,6 +26,12 @@ describe('territory notifications', () => {
     expect(formatTerritoryMessage({ ...base, kind: 'returned', reason: '境界を確認してください' })).toContain('<@981000000000000001>');
     expect(formatTerritoryMessage({ ...base, kind: 'withdrawn', application_type: 'edit' })).toContain('変更申請を取り下げました。');
   });
+  it('formats an immediate rename without pinging the applicant', () => {
+    const event = { ...base, kind: 'renamed' as const, previous_name: '旧領地', territory_name: '新領地', discord_ids: [] }
+    expect(parseTerritoryEvent(event).kind).toBe('renamed')
+    expect(formatTerritoryMessage(event)).toBe('旧領地が新領地に改名されました！')
+    expect(() => parseTerritoryEvent({ ...event, previous_name: '' })).toThrow()
+  })
   it('rejects malformed mention IDs', () => {
     expect(() => parseTerritoryEvent({ ...base, kind: 'approved', discord_ids: ['@everyone'] })).toThrow();
   });
