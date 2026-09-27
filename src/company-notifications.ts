@@ -48,11 +48,11 @@ export function formatCompanyMessage(event: CompanyEvent): string {
   } else if (event.kind === 'approved') {
     message = mentions + 'の企業｢' + event.company_name + '｣が承認されました！';
   } else if (event.kind === 'withdrawn') {
-    message = mentions + 'が' + subject + '申請を取り下げました。';
+    message = mentions + 'が' + subject + (event.application_type === 'edit' ? '申請を取り下げました。' : 'の申請を取り下げました。');
   } else {
     const outcome = event.kind === 'returned' ? '差し戻されました。' : '却下されました。';
     const label = event.kind === 'returned' ? '差戻理由: ' : '却下理由: ';
-    message = mentions + 'の' + subject + 'の申請が' + outcome + '\n' + label + (event.reason ?? '');
+    message = mentions + 'の' + subject + (event.application_type === 'edit' ? '申請が' : 'の申請が') + outcome + '\n' + label + (event.reason ?? '');
   }
   const url = '\n' + event.url;
   if (message.length + url.length > 2000) message = message.slice(0, 1999 - url.length) + '…';
