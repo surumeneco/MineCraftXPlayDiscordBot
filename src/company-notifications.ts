@@ -43,9 +43,9 @@ export function formatCompanyMessage(event: CompanyEvent): string {
   } else if (event.kind === 'approved') {
     result = `${actor}の企業｢${event.company_name}｣が承認されました！\n${event.url}`
   } else if (event.kind === 'returned' || event.kind === 'rejected') {
-    result = `${actor}の${subject}の申請が${event.kind==='returned'?'差し戻されました':'却下されました'}。\n${event.kind==='returned'?'差戻理由':'却下理由'}: ${event.reason}`
+    result = `${actor}の${subject}${event.application_type==='edit'?'申請':'の申請'}が${event.kind==='returned'?'差し戻されました':'却下されました'}。\n${event.kind==='returned'?'差戻理由':'却下理由'}: ${event.reason}`
   } else {
-    result = `${actor}が${subject}の申請を取り下げました。`
+    result = `${actor}が${subject}${event.application_type==='edit'?'申請':'の申請'}を取り下げました。`
   }
   return result.length > 2000 ? result.slice(0,1999)+'…' : result
 }
