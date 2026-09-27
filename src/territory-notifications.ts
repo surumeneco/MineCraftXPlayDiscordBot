@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { type Client, Routes } from 'discord.js';
 import { logger } from './logger.js';
+import { parseCompanyEvent, formatCompanyMessage, type CompanyEvent } from './company-notifications.js';
 
 export interface TerritoryNotificationConfig {
   readonly participantChannelId: string;
@@ -103,7 +104,7 @@ function reply(res: ServerResponse, status: number, message: string): void {
 }
 
 async function receive(req: IncomingMessage, res: ServerResponse, client: Client, config: TerritoryNotificationConfig): Promise<void> {
-  if (req.url !== '/internal/territories' || req.method !== 'POST') return reply(res, 404, 'Not found');
+  if (!['/internal/territories','/internal/companies'].includes(req.url ?? '') || req.method !== 'POST') return reply(res, 404, 'Not found');
   if (!authorized(req.headers.authorization, config.sharedSecret)) return reply(res, 401, 'Unauthorized');
   if (!req.headers['content-type']?.startsWith('application/json')) return reply(res, 415, 'JSON required');
   const chunks: Buffer[] = [];
@@ -114,12 +115,15 @@ async function receive(req: IncomingMessage, res: ServerResponse, client: Client
     if (length > 262144) return reply(res, 413, 'Request too large');
     chunks.push(data);
   }
-  let event: TerritoryEvent;
-  try { event = parseTerritoryEvent(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
-  catch { return reply(res, 400, 'Invalid territory event'); }
+  const isCompany = req.url === '/internal/companies';
+  let event: TerritoryEvent | CompanyEvent;
+  try {
+    const payload: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    event = isCompany ? parseCompanyEvent(payload) : parseTerritoryEvent(payload);
+  } catch { return reply(res, 400, 'Invalid notification event'); }
   if (!client.isReady()) return reply(res, 503, 'Discord unavailable');
   try {
-    const content = formatTerritoryMessage(event);
+    const content = isCompany ? formatCompanyMessage(event as CompanyEvent) : formatTerritoryMessage(event as TerritoryEvent);
     for (const channelId of [config.participantChannelId, config.adminChannelId]) {
       await client.rest.post(Routes.channelMessages(channelId), {
         body: {
@@ -133,7 +137,7 @@ async function receive(req: IncomingMessage, res: ServerResponse, client: Client
     res.writeHead(204, { 'cache-control': 'no-store' });
     res.end();
   } catch {
-    logger.error('Territory notification delivery failed.');
+    logger.error('Territory/company notification delivery failed.');
     reply(res, 502, 'Discord delivery failed');
   }
 }
@@ -141,7 +145,7 @@ async function receive(req: IncomingMessage, res: ServerResponse, client: Client
 export function startTerritoryReceiver(client: Client, config: TerritoryNotificationConfig): Promise<Server> {
   const server = createServer((req, res) => {
     void receive(req, res, client, config).catch(() => {
-      logger.error('Territory notification receiver failed.');
+      logger.error('Territory/company notification receiver failed.');
       if (!res.headersSent) reply(res, 500, 'Internal error');
       else res.end();
     });
