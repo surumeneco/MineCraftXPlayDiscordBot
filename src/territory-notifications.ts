@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { type Client, Routes } from 'discord.js';
 import { logger } from './logger.js';
+import { deliverPendingReminder, parsePendingReminderEvent } from './pending-reminders.js';
 import { parseCompanyEvent, formatCompanyMessage, type CompanyEvent } from './company-notifications.js';
 
 export interface TerritoryNotificationConfig {
@@ -104,7 +105,7 @@ function reply(res: ServerResponse, status: number, message: string): void {
 }
 
 async function receive(req: IncomingMessage, res: ServerResponse, client: Client, config: TerritoryNotificationConfig): Promise<void> {
-  if (!['/internal/territories','/internal/companies'].includes(req.url ?? '') || req.method !== 'POST') return reply(res, 404, 'Not found');
+  if (!['/internal/territories','/internal/companies','/internal/pending-applications'].includes(req.url ?? '') || req.method !== 'POST') return reply(res, 404, 'Not found');
   if (!authorized(req.headers.authorization, config.sharedSecret)) return reply(res, 401, 'Unauthorized');
   if (!req.headers['content-type']?.startsWith('application/json')) return reply(res, 415, 'JSON required');
   const chunks: Buffer[] = [];
@@ -112,8 +113,23 @@ async function receive(req: IncomingMessage, res: ServerResponse, client: Client
   for await (const chunk of req) {
     const data = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     length += data.length;
-    if (length > 262144) return reply(res, 413, 'Request too large');
+    if (length > (req.url === '/internal/pending-applications' ? 1048576 : 262144)) return reply(res, 413, 'Request too large');
     chunks.push(data);
+  }
+  if (req.url === '/internal/pending-applications') {
+    let reminder;
+    try { reminder = parsePendingReminderEvent(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
+    catch { return reply(res, 400, 'Invalid pending application reminder'); }
+    if (!client.isReady()) return reply(res, 503, 'Discord unavailable');
+    try {
+      await deliverPendingReminder(client, config.adminChannelId, reminder);
+      res.writeHead(204, { 'cache-control': 'no-store' });
+      res.end();
+    } catch {
+      logger.error('Pending application reminder delivery failed.');
+      reply(res, 502, 'Discord delivery failed');
+    }
+    return;
   }
   const isCompany = req.url === '/internal/companies';
   let event: TerritoryEvent | CompanyEvent;
