@@ -67,7 +67,7 @@ export function parsePendingReminderEvent(value: unknown): PendingReminderEvent 
 
 function entry(item: PendingApplicationItem): string {
   // User-provided names must not introduce extra lines or Discord formatting.
-  const name = item.name.replace(/\s+/gu, ' ').replace(/([\\*_~|\`>])/gu, '\\$1');
+  const name = item.name.replace(/\s+/gu, ' ').replace(/([\\*_~|`>])/gu, '\\$1');
   return '・[' + (item.application_type === 'new' ? '新規' : '変更') + '] ' + name + '\n' + item.url;
 }
 
