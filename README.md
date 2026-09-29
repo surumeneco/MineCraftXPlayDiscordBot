@@ -181,3 +181,9 @@ docker compose -f compose.yaml -f compose.prod.yaml -f compose.notice.yaml logs 
 - [DiscordBot 設計](https://drive.google.com/file/d/1rpYIHjRzajzdnohlQGl0lkTLVuL0C4Ju/view)
 - [実装制約](https://drive.google.com/file/d/1KvbMEWMfC-HWpg7k_VWqGV6XIZirK2Sd/view)
 - [サーバー構成](https://drive.google.com/file/d/1SndNSbyQX5HUEEE-ueQAofPO0bZ6jvto/view)
+
+## 承認待ち申請の日次通知（BOT-005）
+
+WebAppが `Asia/Tokyo` の毎日03:00以降に、領地・企業の申請待ち一覧を `POST /internal/pending-applications` へ送ります。既存領地通知と同じ内部受信ポート・共有Secretを流用し、`TERRITORY_ADMIN_CHANNEL_ID` へだけ投稿します。0件でも「承認待ちの申請はありません。」と送ります。
+
+Bot側には時刻設定やcronは不要です。WebAppが送信時刻・申請抽出・当日送信済みの永続管理を担当します。複数のDiscordメッセージへ分割される場合、連番ごとに安定したnonceを指定します。
